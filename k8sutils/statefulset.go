@@ -345,9 +345,6 @@ func createPVCTemplate(volumeName string, stsMeta metav1.ObjectMeta, storageSpec
 
 // generateContainerDef generates container definition for Redis
 func generateContainerDef(name string, containerParams containerParameters, clusterMode, nodeConfVolume, enableMetrics bool, externalConfig, clusterVersion *string, mountpath []corev1.VolumeMount, sidecars []redisv1beta2.Sidecar) []corev1.Container {
-	sentinelCntr := containerParams.Role == "sentinel"
-	enableTLS := containerParams.TLSConfig != nil
-	enableAuth := containerParams.EnabledPassword != nil && *containerParams.EnabledPassword
 	containerDefinition := []corev1.Container{
 		{
 			Name:            name,
@@ -366,8 +363,8 @@ func generateContainerDef(name string, containerParams containerParameters, clus
 				containerParams.Port,
 				clusterVersion,
 			),
-			ReadinessProbe: getProbeInfo(containerParams.ReadinessProbe, sentinelCntr, enableTLS, enableAuth),
-			LivenessProbe:  getProbeInfo(containerParams.LivenessProbe, sentinelCntr, enableTLS, enableAuth),
+			ReadinessProbe: getProbeInfo(containerParams.ReadinessProbe),
+			LivenessProbe:  getProbeInfo(containerParams.LivenessProbe),
 			VolumeMounts:   getVolumeMount(name, containerParams.PersistenceEnabled, clusterMode, nodeConfVolume, externalConfig, mountpath, containerParams.TLSConfig, containerParams.ACLConfig),
 		},
 	}
@@ -386,6 +383,9 @@ func generateContainerDef(name string, containerParams containerParameters, clus
 		}
 		if sidecar.Command != nil {
 			container.Command = sidecar.Command
+		}
+		if sidecar.SecurityContext != nil {
+			container.SecurityContext = sidecar.SecurityContext
 		}
 		if sidecar.Ports != nil {
 			container.Ports = append(container.Ports, *sidecar.Ports...)
@@ -476,6 +476,7 @@ func enableRedisMonitoring(params containerParameters) corev1.Container {
 		Name:            redisExporterContainer,
 		Image:           params.RedisExporterImage,
 		ImagePullPolicy: params.RedisExporterImagePullPolicy,
+		SecurityContext: params.SecurityContext,
 		Env:             getExporterEnvironmentVariables(params),
 		VolumeMounts:    getVolumeMount("", nil, false, false, nil, params.AdditionalMountPath, params.TLSConfig, params.ACLConfig), // We need/want the tls-certs but we DON'T need the PVC (if one is available)
 		Ports: []corev1.ContainerPort{
@@ -596,23 +597,7 @@ func getVolumeMount(name string, persistenceEnabled *bool, clusterMode bool, nod
 }
 
 // getProbeInfo generate probe for Redis StatefulSet
-func getProbeInfo(probe *commonapi.Probe, sentinel, enableTLS, enableAuth bool) *corev1.Probe {
-	healthChecker := []string{
-		"redis-cli",
-		"-h", "$(hostname)",
-	}
-	if sentinel {
-		healthChecker = append(healthChecker, "-p", "${SENTINEL_PORT}")
-	} else {
-		healthChecker = append(healthChecker, "-p", "${REDIS_PORT}")
-	}
-	if enableAuth {
-		healthChecker = append(healthChecker, "-a", "${REDIS_PASSWORD}")
-	}
-	if enableTLS {
-		healthChecker = append(healthChecker, "--tls", "--cert", "${REDIS_TLS_CERT}", "--key", "${REDIS_TLS_CERT_KEY}", "--cacert", "${REDIS_TLS_CA_KEY}")
-	}
-	healthChecker = append(healthChecker, "ping")
+func getProbeInfo(probe *commonapi.Probe) *corev1.Probe {
 	return &corev1.Probe{
 		InitialDelaySeconds: probe.InitialDelaySeconds,
 		PeriodSeconds:       probe.PeriodSeconds,
@@ -621,7 +606,10 @@ func getProbeInfo(probe *commonapi.Probe, sentinel, enableTLS, enableAuth bool) 
 		SuccessThreshold:    probe.SuccessThreshold,
 		ProbeHandler: corev1.ProbeHandler{
 			Exec: &corev1.ExecAction{
-				Command: []string{"sh", "-c", strings.Join(healthChecker, " ")},
+				Command: []string{
+					"bash",
+					"/usr/bin/healthcheck.sh",
+				},
 			},
 		},
 	}

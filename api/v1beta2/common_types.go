@@ -82,6 +82,7 @@ type Sidecar struct {
 	Volumes        *[]corev1.VolumeMount   `json:"mountPath,omitempty"`
 	Command        []string                `json:"command,omitempty" protobuf:"bytes,3,rep,name=command"`
 	Ports          *[]corev1.ContainerPort `json:"ports,omitempty" patchStrategy:"merge" patchMergeKey:"containerPort" protobuf:"bytes,6,rep,name=ports"`
+	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
 }
 
 // InitContainer for each Redis pods
