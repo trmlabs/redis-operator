@@ -10,7 +10,7 @@ on:
 
 jobs:
   validate-examples:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-hardened-latest-m
     steps:
     - name: Checkout code
       uses: actions/checkout@v4

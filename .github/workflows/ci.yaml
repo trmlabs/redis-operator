@@ -21,7 +21,7 @@ env:
 jobs:
   gotest:
     name: Go Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-hardened-latest-m
     needs:
       - lint
     steps:
@@ -42,7 +42,7 @@ jobs:
           verbose: true
 
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-hardened-latest-m
     steps:
       - uses: actions/checkout@v4
       - name: Set up Go
@@ -57,7 +57,7 @@ jobs:
           version: v1.54.0
 
   container_quality_dockerfile_lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-hardened-latest-m
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -70,7 +70,7 @@ jobs:
 
   build_go_binary:
     needs: [lint]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-hardened-latest-m
     strategy:
       matrix:
         arch: ["amd64", "arm64"]
@@ -91,7 +91,7 @@ jobs:
           zip ${{ github.workspace }}/compiled/${{ matrix.arch }}/${{ env.APPLICATION_NAME }}-${{ matrix.arch }}.zip ${{ github.workspace }}/${{ env.APPLICATION_NAME }}
   build_scan_container_image:
     needs: [container_quality_dockerfile_lint]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-hardened-latest-m
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -109,7 +109,7 @@ jobs:
 
   gosec_scan:
     needs: [build_go_binary]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-hardened-latest-m
 
     steps:
       - name: Checkout Code
@@ -123,7 +123,7 @@ jobs:
 
   validate-yaml:
     name: Validate YAML
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-hardened-latest-m
     needs:
       - gotest
     steps:
@@ -137,7 +137,7 @@ jobs:
   e2e-test:
     needs: [validate-yaml]
     name: ${{ matrix.testpath }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-hardened-latest-m
     strategy:
       matrix:
         testpath:

@@ -11,7 +11,7 @@ on:
 jobs:
   test:
     name: ${{ matrix.testpath }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-hardened-latest-m
     strategy:
       matrix:
         testpath: []

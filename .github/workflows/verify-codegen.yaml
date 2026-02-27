@@ -10,7 +10,7 @@ on:
 
 jobs:
   verify-codegen:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-hardened-latest-m
 
     steps:
     - name: Free disk space
